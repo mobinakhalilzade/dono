@@ -10,7 +10,7 @@ export interface ServerSessionUser {
   email: string;
   displayName: string;
   avatarUrl: string;
-  provider: 'google';
+  provider: 'google' | 'credentials' | 'demo';
   exp: number;
 }
 

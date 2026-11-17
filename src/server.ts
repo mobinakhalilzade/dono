@@ -320,6 +320,46 @@ app.get('/api/auth/me', (req: Request, res: Response) => {
   });
 });
 
+app.post(['/users/register', '/api/users/register'], (req: Request, res: Response) => {
+  const { firstName, lastName, username, phoneNumber, password } = req.body || {};
+  if (!username || !password) {
+    res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است.' });
+    return;
+  }
+  const cleanUsername = String(username).replace(/^@/, '').trim().toLowerCase();
+  const sessionUser: ServerSessionUser = {
+    id: `usr-cred-${cleanUsername}`,
+    email: `${cleanUsername}@dono.ir`,
+    displayName: `${firstName || ''} ${lastName || ''}`.trim() || cleanUsername,
+    avatarUrl: '',
+    provider: 'credentials',
+    exp: Date.now() + SESSION_MAX_AGE_MS,
+  };
+  const sessionToken = signPayload(sessionUser, getSessionSecret());
+  res.cookie(SESSION_COOKIE_NAME, sessionToken, getCookieOptions(req, SESSION_MAX_AGE_MS));
+  res.json({ ok: true, user: sessionUser });
+});
+
+app.post(['/users/login', '/api/users/login'], (req: Request, res: Response) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    res.status(400).json({ error: 'نام کاربری و رمز عبور الزامی است.' });
+    return;
+  }
+  const cleanUsername = String(username).replace(/^@/, '').trim().toLowerCase();
+  const sessionUser: ServerSessionUser = {
+    id: `usr-cred-${cleanUsername}`,
+    email: `${cleanUsername}@dono.ir`,
+    displayName: cleanUsername,
+    avatarUrl: '',
+    provider: 'credentials',
+    exp: Date.now() + SESSION_MAX_AGE_MS,
+  };
+  const sessionToken = signPayload(sessionUser, getSessionSecret());
+  res.cookie(SESSION_COOKIE_NAME, sessionToken, getCookieOptions(req, SESSION_MAX_AGE_MS));
+  res.json({ ok: true, user: sessionUser });
+});
+
 app.post('/api/auth/logout', (req: Request, res: Response) => {
   res.clearCookie(SESSION_COOKIE_NAME, getCookieOptions(req));
   res.clearCookie(OAUTH_STATE_COOKIE_NAME, getCookieOptions(req));

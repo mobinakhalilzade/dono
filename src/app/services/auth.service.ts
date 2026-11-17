@@ -243,6 +243,17 @@ export class AuthService {
   }
 
   async signUpWithCredentials(input: CredentialsSignUpInput): Promise<AuthUser> {
+    try {
+      await fetch('/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+        credentials: 'include',
+      });
+    } catch {
+      // Ignore network errors in offline/preview mode
+    }
+
     const cleanFirst = input.firstName.trim();
     const cleanLast = input.lastName.trim();
     const cleanUsername = normalizeDigits(input.username).replace(/^@/, '').trim().toLowerCase();
@@ -316,6 +327,17 @@ export class AuthService {
   }
 
   async signInWithCredentials(input: CredentialsLoginInput): Promise<AuthUser> {
+    try {
+      await fetch('/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+        credentials: 'include',
+      });
+    } catch {
+      // Ignore network errors in offline/preview mode
+    }
+
     const cleanUsername = normalizeDigits(input.username).replace(/^@/, '').trim().toLowerCase();
     const accounts = this.loadLocalAccounts();
     const account = accounts.find((a) => a.username.toLowerCase() === cleanUsername);
