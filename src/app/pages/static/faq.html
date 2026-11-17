@@ -1,0 +1,37 @@
+<section class="static-page">
+  <div class="container static-narrow">
+    <header class="static-head">
+      <h1 class="static-title balance-text">سوالات متداول</h1>
+      <p class="static-lead">پاسخ به پرسش‌های رایج آفرینندگان و حامیان دونو</p>
+    </header>
+
+    <div class="faq-stack">
+      @for (item of items; track item.id) {
+        <div class="surface-card faq-box">
+          <button
+            type="button"
+            class="faq-btn"
+            [attr.aria-expanded]="openId() === item.id"
+            (click)="toggle(item.id)"
+          >
+            <span>{{ item.question }}</span>
+            <app-icon name="chevron-down" [size]="18" />
+          </button>
+          @if (openId() === item.id) {
+            <div class="faq-content">
+              <p>{{ item.answer }}</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="surface-card contact-callout">
+      <div>
+        <h2>پاسخ سوال خود را پیدا نکردید؟</h2>
+        <p>تیم پشتیبانی دونو آماده پاسخ‌گویی به پیام‌های شماست.</p>
+      </div>
+      <a routerLink="/contact" class="btn btn-primary">تماس با ما</a>
+    </div>
+  </div>
+</section>

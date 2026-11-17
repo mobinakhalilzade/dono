@@ -18,25 +18,8 @@ import { AuthService } from './services/auth.service';
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterOutlet, Navbar, Footer],
-  template: `
-    <div class="app-shell">
-      <app-navbar />
-      <main #mainContainer class="app-main">
-        <router-outlet />
-      </main>
-      <app-footer />
-    </div>
-  `,
-  styles: `
-    .app-shell {
-      min-block-size: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-    .app-main {
-      flex: 1;
-    }
-  `,
+  templateUrl: './app.html',
+  styleUrl: './app.scss',
 })
 export class App {
   private readonly authService = inject(AuthService);

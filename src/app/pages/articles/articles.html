@@ -1,1 +1,10 @@
-<p>articles works!</p>
+@for (a of articles(); track a.id) {
+  <article>
+    @if (a.cover) {
+      <img [src]="directus.imageUrl(a.cover, 600)" [alt]="a.title" referrerpolicy="no-referrer" />
+    }
+    <h2><a [routerLink]="['/articles', a.slug]">{{ a.title }}</a></h2>
+  </article>
+} @empty {
+  <p>No articles yet.</p>
+}

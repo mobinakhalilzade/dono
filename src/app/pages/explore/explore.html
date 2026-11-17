@@ -1,0 +1,109 @@
+<section class="explore-section">
+  <div class="container">
+    <header class="page-head">
+      <h1 class="page-title balance-text">کاوش آفرینندگان دونو</h1>
+      <p class="page-subtitle">
+        پادکست‌سازان، تصویرگران، نویسندگان و برنامه‌نویسان مستقل فارسی را پیدا و حمایت کنید.
+      </p>
+    </header>
+
+    <div class="controls-bar surface-card">
+      <div class="search-field-wrap">
+        <label for="explore-search" class="sr-only">جست‌وجوی آفریننده</label>
+        <span class="search-icon" aria-hidden="true">
+          <app-icon name="search" [size]="18" />
+        </span>
+        <input
+          id="explore-search"
+          type="search"
+          [formControl]="searchControl"
+          class="field-input search-input"
+          placeholder="جست‌وجو بر اساس نام، نام کاربری یا موضوع..."
+        />
+      </div>
+
+      <div class="sort-wrap">
+        <label for="explore-sort" class="sort-label">مرتب‌سازی:</label>
+        <select
+          id="explore-sort"
+          [formControl]="sortControl"
+          class="field-select sort-select"
+          (change)="triggerBriefLoading()"
+        >
+          <option value="popular">پرحامی‌ترین</option>
+          <option value="newest">جدیدترین</option>
+          <option value="raised">بیشترین حمایت دریافتی</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="categories-bar" role="tablist" aria-label="فیلتر دسته‌بندی آفرینندگان">
+      <button
+        type="button"
+        role="tab"
+        [attr.aria-selected]="selectedCategory() === 'all'"
+        class="cat-tab"
+        [class.is-active]="selectedCategory() === 'all'"
+        (click)="selectCategory('all')"
+      >
+        همه
+      </button>
+      @for (cat of categoryEntries(); track cat.key) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="selectedCategory() === cat.key"
+          class="cat-tab"
+          [class.is-active]="selectedCategory() === cat.key"
+          (click)="selectCategory(cat.key)"
+        >
+          {{ cat.label }}
+        </button>
+      }
+    </div>
+
+    <div class="results-meta meta-row">
+      <span class="results-count tabular-nums">{{ formatNumberFa(filteredCreators().length) }} آفریننده</span>
+      @if (selectedCategory() !== 'all' || (searchValue() ?? '').trim()) {
+        <span aria-hidden="true">·</span>
+        <button type="button" class="clear-inline-btn" (click)="resetFilters()">
+          پاک کردن فیلترها
+        </button>
+      }
+    </div>
+
+    @if (isLoading()) {
+      <div class="creators-grid" aria-busy="true" aria-label="در حال بارگذاری آفرینندگان">
+        @for (item of [1, 2, 3, 4, 5, 6]; track item) {
+          <div class="surface-card skeleton-card">
+            <div class="skeleton skeleton-cover"></div>
+            <div class="skeleton-body">
+              <div class="skeleton skeleton-line-lg"></div>
+              <div class="skeleton skeleton-line-sm"></div>
+              <div class="skeleton skeleton-line-md"></div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else if (filteredCreators().length > 0) {
+      <div class="creators-grid">
+        @for (creator of filteredCreators(); track creator.id; let i = $index) {
+          <div class="creator-grid-item" [style.--stagger]="i < 6 ? i : 5">
+            <app-creator-card [creator]="creator" />
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="surface-card empty-state">
+        <app-icon name="search" [size]="32" />
+        <h2 class="empty-title">آفریننده‌ای با این مشخصات پیدا نشد</h2>
+        <p class="empty-desc">
+          عبارت جست‌وجو یا دسته‌بندی انتخاب‌شده را تغییر دهید تا صفحه‌های فعال نمایش داده شوند.
+        </p>
+        <button type="button" class="btn btn-primary btn-sm" (click)="resetFilters()">
+          نمایش همه آفرینندگان
+        </button>
+      </div>
+    }
+  </div>
+</section>

@@ -1,0 +1,482 @@
+@if (creator(); as c) {
+  <section class="profile-page">
+    <!-- Cover Banner -->
+    <div class="cover-banner">
+      @if (!coverFailed()) {
+        <img
+          [src]="c.coverUrl"
+          [alt]="c.displayName"
+          referrerpolicy="no-referrer"
+          class="cover-banner-img"
+          (error)="coverFailed.set(true)"
+        />
+      } @else {
+        <div class="cover-banner-fallback" aria-hidden="true"></div>
+      }
+    </div>
+
+    <div class="container profile-header-wrap">
+      <div class="profile-identity surface-card">
+        <div class="identity-top">
+          <div class="avatar-box">
+            @if (!avatarFailed()) {
+              <img
+                [src]="c.avatarUrl"
+                [alt]="c.displayName"
+                referrerpolicy="no-referrer"
+                class="avatar-img"
+                (error)="avatarFailed.set(true)"
+              />
+            } @else {
+              <span class="avatar-fallback">{{ c.displayName.slice(0, 1) }}</span>
+            }
+          </div>
+
+          <div class="identity-actions">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              (click)="shareModalOpen.set(true)"
+            >
+              <app-icon name="share" [size]="16" />
+              <span>اشتراک‌گذاری</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="identity-text">
+          <div class="name-line">
+            <h1 class="creator-title">{{ c.displayName }}</h1>
+            @if (c.verified) {
+              <span class="verified-label">
+                <app-icon name="verified" [size]="16" />
+                <span>تایید شده</span>
+              </span>
+            }
+          </div>
+
+          <div class="meta-row">
+            <span dir="ltr">&#64;{{ c.username }}</span>
+            <span aria-hidden="true">·</span>
+            <span>{{ categoryLabel() }}</span>
+            <span aria-hidden="true">·</span>
+            <span class="tabular-nums">{{ formatNumberFa(c.supportersCount) }} حامی</span>
+            <span aria-hidden="true">·</span>
+            <span>عضویت از {{ formatJalaliDate(c.createdAt) }}</span>
+          </div>
+
+          <p class="creator-tagline">{{ c.tagline }}</p>
+
+          @if (c.socialLinks.length > 0) {
+            <div class="social-row">
+              @for (link of c.socialLinks; track link.label) {
+                <a
+                  [href]="link.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="social-link"
+                >
+                  <app-icon name="external" [size]="14" />
+                  <span>{{ link.label }}</span>
+                </a>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Two-Column Workspace -->
+    <div class="container profile-columns">
+      <!-- Support Box Column -->
+      <aside class="support-column" id="support-box">
+        <div class="surface-card support-card">
+          <h2 class="support-title">
+            <app-icon name="heart" [size]="20" />
+            <span>حمایت از {{ c.displayName }}</span>
+          </h2>
+          <p class="support-rate tabular-nums">
+            حداقل مبلغ حمایت: {{ formatToman(effectiveMinAmount()) }}
+          </p>
+
+          <div class="amount-chips" role="group" aria-label="انتخاب سریع مبلغ حمایت به تومان">
+            @for (amt of quickAmounts; track amt) {
+              <button
+                type="button"
+                class="preset-btn tabular-nums"
+                [class.is-selected]="totalAmount() === amt"
+                [disabled]="selectedGoalRemaining() !== null && amt > selectedGoalRemaining()!"
+                (click)="selectQuickAmount(amt)"
+              >
+                {{ formatToman(amt) }}
+              </button>
+            }
+          </div>
+
+          <form [formGroup]="supportForm" (ngSubmit)="openPaymentPreview()" novalidate class="support-form">
+            @if (orderedPosts().length > 0) {
+              <div class="field-group">
+                <label for="support-target" class="field-label">مقصد حمایت</label>
+                <select id="support-target" formControlName="targetPostId" class="field-select">
+                  @for (p of orderedPosts(); track p.id) {
+                    @if (p.kind === 'general') {
+                      <option [value]="p.id">{{ p.title }} (بدون سقف مبلغ)</option>
+                    } @else if (!isGoalCompleted(p)) {
+                      <option [value]="p.id">
+                        {{ p.title }} (باقی‌مانده: {{ formatToman(getGoalRemainingAmount(p) ?? 0) }})
+                      </option>
+                    }
+                  }
+                </select>
+                @if (selectedPost(); as sp) {
+                  @if (sp.kind === 'goal') {
+                    <span class="field-hint tabular-nums">
+                      هدف مالی: {{ formatToman(sp.raisedAmount) }} از {{ formatToman(sp.targetAmount ?? 0) }} جمع‌آوری شده
+                      (باقی‌مانده: {{ formatToman(getGoalRemainingAmount(sp) ?? 0) }})
+                    </span>
+                  } @else {
+                    <span class="field-hint">
+                      حمایت عمومی بدون سقف محدودیت مبلغ
+                    </span>
+                  }
+                }
+              </div>
+            }
+
+            <div class="field-group">
+              <label for="custom-amount" class="field-label">مبلغ حمایت دلخواه (تومان)</label>
+              <input
+                id="custom-amount"
+                type="number"
+                [min]="effectiveSupportMin()"
+                [max]="effectiveSupportMax()"
+                step="10000"
+                formControlName="amount"
+                class="field-input tabular-nums"
+                [class.is-invalid]="submitted() && !!formErrors()['amount']"
+                placeholder="مثلاً ۱۰۰۰۰۰"
+              />
+              @if (submitted() && formErrors()['amount']; as err) {
+                <span class="field-error">
+                  <app-icon name="alert" [size]="14" />
+                  <span>{{ err }}</span>
+                </span>
+              } @else {
+                <span class="field-hint tabular-nums">
+                  بازه مجاز: {{ formatToman(effectiveSupportMin()) }} تا {{ formatToman(effectiveSupportMax()) }}
+                </span>
+              }
+            </div>
+
+            <div class="field-group">
+              <label for="supporter-name" class="field-label">نام یا لقب شما</label>
+              <input
+                id="supporter-name"
+                type="text"
+                formControlName="name"
+                class="field-input"
+                [class.is-invalid]="submitted() && !!formErrors()['name']"
+                placeholder="مثلاً علی یا نام مستعار"
+              />
+              @if (submitted() && formErrors()['name']; as err) {
+                <span class="field-error">
+                  <app-icon name="alert" [size]="14" />
+                  <span>{{ err }}</span>
+                </span>
+              }
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" formControlName="isAnonymous" />
+              <span>حمایت به صورت ناشناس ثبت شود</span>
+            </label>
+
+            <div class="field-group">
+              <label for="supporter-msg" class="field-label">پیام حمایتی (اختیاری)</label>
+              <textarea
+                id="supporter-msg"
+                formControlName="message"
+                class="field-textarea"
+                [class.is-invalid]="submitted() && !!formErrors()['message']"
+                placeholder="یک جمله دلگرم‌کننده بنویسید..."
+              ></textarea>
+              @if (submitted() && formErrors()['message']; as err) {
+                <span class="field-error">
+                  <app-icon name="alert" [size]="14" />
+                  <span>{{ err }}</span>
+                </span>
+              }
+            </div>
+
+            @if (paymentSuccessMessage(); as okMsg) {
+              <div class="status-banner is-success" role="status">
+                <app-icon name="check" [size]="18" />
+                <span>{{ okMsg }}</span>
+              </div>
+            }
+
+            @if (activeThankYouAnim().isPremium) {
+              <div class="premium-anim-callout">
+                <app-icon name="sparkles" [size]="16" />
+                <span>پس از پرداخت، جشن تشکر «{{ activeThankYouAnim().name }}» نمایش داده می‌شود</span>
+              </div>
+            }
+
+            <button type="submit" class="btn btn-primary support-submit tabular-nums">
+              <span>تایید و حمایت به مبلغ {{ formatToman(totalAmount()) }}</span>
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Main Content Column -->
+      <div class="main-column">
+        <section class="surface-card bio-card">
+          <h2 class="section-subtitle">درباره {{ c.displayName }}</h2>
+          <p class="bio-text">{{ c.bio }}</p>
+        </section>
+
+        <div class="content-tabs" role="tablist" aria-label="بخش‌های صفحه آفریننده">
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'posts'"
+            class="tab-btn"
+            [class.is-active]="activeTab() === 'posts'"
+            (click)="activeTab.set('posts')"
+          >
+            <span>پست‌ها و اهداف</span>
+            <span class="tab-count tabular-nums">({{ formatNumberFa(orderedPosts().length) }})</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="activeTab() === 'supporters'"
+            class="tab-btn"
+            [class.is-active]="activeTab() === 'supporters'"
+            (click)="activeTab.set('supporters')"
+          >
+            <span>دیوار حامیان</span>
+            <span class="tab-count tabular-nums">({{ formatNumberFa(supporters().length) }})</span>
+          </button>
+        </div>
+
+        @if (activeTab() === 'posts') {
+          <div class="feed-list">
+            @for (post of orderedPosts(); track post.id; let i = $index) {
+              <article class="surface-card feed-card" [style.--stagger]="i < 6 ? i : 5">
+                <div class="feed-head">
+                  @if (post.kind === 'goal') {
+                    <span
+                      class="post-kind-badge"
+                      [class.is-goal]="!isGoalCompleted(post)"
+                      [class.is-completed]="isGoalCompleted(post)"
+                    >
+                      <app-icon [name]="isGoalCompleted(post) ? 'check' : 'target'" [size]="14" />
+                      <span>{{ isGoalCompleted(post) ? 'هدف مالی · تکمیل شد' : 'هدف مالی مشخص' }}</span>
+                    </span>
+                  } @else {
+                    <span class="post-kind-badge">
+                      <app-icon name="heart" [size]="14" />
+                      <span>پست عمومی · بدون سقف مبلغ</span>
+                    </span>
+                  }
+                  <div class="meta-row">
+                    <span>{{ formatJalaliDate(post.createdAt) }}</span>
+                    <span aria-hidden="true">·</span>
+                    <span class="tabular-nums">{{ formatNumberFa(post.likesCount) }} پسند</span>
+                  </div>
+                </div>
+
+                <h3 class="post-title">{{ post.title }}</h3>
+                <p class="feed-message">{{ post.content }}</p>
+
+                @if (post.kind === 'goal' && post.targetAmount) {
+                  @let pct = getGoalProgressPercent(post) ?? 0;
+                  @let rem = getGoalRemainingAmount(post) ?? 0;
+                  <div class="goal-progress-box">
+                    <div class="goal-stats-row">
+                      <span class="goal-raised-strong tabular-nums">
+                        {{ formatToman(post.raisedAmount) }} جمع‌آوری شده از {{ formatToman(post.targetAmount) }}
+                      </span>
+                      <span class="goal-percent-tag tabular-nums">{{ formatNumberFa(pct) }}٪</span>
+                    </div>
+                    <div class="goal-track" role="progressbar" [attr.aria-valuenow]="pct" aria-valuemin="0" aria-valuemax="100">
+                      <div class="goal-fill" [class.is-complete]="isGoalCompleted(post)" [style.inline-size.%]="pct"></div>
+                    </div>
+                    <div class="goal-sub-row">
+                      <span class="tabular-nums">
+                        {{ isGoalCompleted(post) ? 'تمام مبلغ هدف تامین شده است' : 'باقی‌مانده تا سقف: ' + formatToman(rem) }}
+                      </span>
+                      <span class="tabular-nums">سقف: {{ formatToman(post.targetAmount) }}</span>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="goal-progress-box">
+                    <div class="goal-stats-row">
+                      <span class="goal-raised-strong tabular-nums">
+                        مجموع حمایت از این پست: {{ formatToman(post.raisedAmount) }}
+                      </span>
+                      <span class="field-hint">بدون محدودیت سقف</span>
+                    </div>
+                  </div>
+                }
+
+                <div class="post-card-footer">
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    [class.btn-primary]="post.kind === 'general'"
+                    [class.btn-warm]="post.kind === 'goal' && !isGoalCompleted(post)"
+                    [class.btn-secondary]="isGoalCompleted(post)"
+                    [disabled]="isGoalCompleted(post)"
+                    (click)="selectPostToSupport(post)"
+                  >
+                    <app-icon [name]="post.kind === 'goal' ? 'target' : 'heart'" [size]="15" />
+                    <span>
+                      @if (isGoalCompleted(post)) {
+                        سقف هدف تکمیل شده است
+                      } @else if (post.kind === 'goal') {
+                        حمایت از این هدف
+                      } @else {
+                        حمایت از این پست
+                      }
+                    </span>
+                  </button>
+                </div>
+              </article>
+            } @empty {
+              <div class="surface-card empty-box">
+                <app-icon name="edit" [size]="28" />
+                <p>این آفریننده هنوز پستی منتشر نکرده است.</p>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="feed-list">
+            @for (sup of supporters(); track sup.id; let i = $index) {
+              <article class="surface-card feed-card" [style.--stagger]="i < 6 ? i : 5">
+                <div class="feed-head">
+                  <strong class="supporter-name">{{ sup.supporterName }}</strong>
+                  <div class="meta-row">
+                    <span class="support-amount-pill tabular-nums">{{ formatToman(sup.amount) }}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{{ formatJalaliDate(sup.createdAt) }}</span>
+                  </div>
+                </div>
+                @if (sup.postTitle) {
+                  <span class="supporter-target-note">بابت: {{ sup.postTitle }}</span>
+                }
+                @if (sup.message) {
+                  <p class="feed-message">{{ sup.message }}</p>
+                }
+              </article>
+            } @empty {
+              <div class="surface-card empty-box">
+                <app-icon name="heart" [size]="28" />
+                <p>هنوز حمایتی ثبت نشده است. اولین حامی {{ c.displayName }} باشید!</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Share Modal (Link + QR + Web Share) -->
+    <app-share-modal
+      [open]="shareModalOpen()"
+      [username]="c.username"
+      [displayName]="c.displayName"
+      (closed)="shareModalOpen.set(false)"
+    />
+
+    <!-- Placeholder Payment Step Modal -->
+    @if (paymentModalOpen()) {
+      <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
+        <div class="surface-card modal-card">
+          <div class="modal-head">
+            <h2 id="payment-modal-title" class="modal-title">پیش‌نمایش درگاه پرداخت آزمایشی</h2>
+            <button
+              type="button"
+              class="icon-close-btn"
+              aria-label="بستن پنجره پرداخت"
+              (click)="paymentModalOpen.set(false)"
+            >
+              <app-icon name="close" [size]="18" />
+            </button>
+          </div>
+
+          <p class="modal-note">
+            این یک مرحله پرداخت آزمایشی است و هیچ وجه واقعی از حساب شما کسر نمی‌شود.
+          </p>
+
+          <dl class="invoice-list">
+            <div class="invoice-row">
+              <dt>گیرنده حمایت</dt>
+              <dd>{{ c.displayName }}</dd>
+            </div>
+            @if (selectedPost(); as sp) {
+              <div class="invoice-row">
+                <dt>بابت</dt>
+                <dd>{{ sp.title }}</dd>
+              </div>
+            }
+            <div class="invoice-row">
+              <dt>نام حامی</dt>
+              <dd>{{ supportForm.controls.isAnonymous.value ? 'حامی ناشناس' : supportForm.controls.name.value }}</dd>
+            </div>
+            <div class="invoice-row">
+              <dt>تاریخ</dt>
+              <dd>{{ todayJalali }}</dd>
+            </div>
+            <div class="invoice-row invoice-total">
+              <dt>مبلغ حمایت</dt>
+              <dd class="tabular-nums">{{ formatToman(totalAmount()) }}</dd>
+            </div>
+          </dl>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="btn btn-primary"
+              [disabled]="processingPayment()"
+              (click)="confirmPlaceholderPayment()"
+            >
+              <app-icon name="check" [size]="18" />
+              <span>{{ processingPayment() ? 'در حال ثبت...' : 'تایید و پرداخت آزمایشی' }}</span>
+            </button>
+            <button type="button" class="btn btn-secondary" (click)="paymentModalOpen.set(false)">
+              انصراف
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Premium Post-Payment Thank-You Celebration Overlay -->
+    @if (lastCelebration(); as cel) {
+      <app-thank-you-celebration
+        [open]="celebrationOpen()"
+        [animationId]="activeThankYouAnim().id"
+        [creatorName]="c.displayName"
+        [creatorAvatarUrl]="c.avatarUrl"
+        [creatorVerified]="c.verified"
+        [supporterName]="cel.supporterName"
+        [amount]="cel.amount"
+        [postTitle]="cel.postTitle"
+        [thankYouNote]="creatorAnimConfig().thankYouNote"
+        [previewMode]="false"
+        (closed)="celebrationOpen.set(false)"
+      />
+    }
+  </section>
+} @else {
+  <section class="container not-found-creator">
+    <div class="surface-card empty-box">
+      <app-icon name="alert" [size]="32" />
+      <h1>صفحه آفریننده پیدا نشد</h1>
+      <p>آدرس وارد شده معتبر نیست یا این صفحه هنوز ساخته نشده است.</p>
+      <a routerLink="/explore" class="btn btn-primary">بازگشت به فهرست آفرینندگان</a>
+    </div>
+  </section>
+}

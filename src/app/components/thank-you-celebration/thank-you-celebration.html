@@ -1,0 +1,103 @@
+@if (open()) {
+  <div
+    class="ty-backdrop"
+    [attr.data-anim]="animationId()"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ty-dialog-title"
+    (click)="onBackdropClick($event)"
+  >
+    <canvas #fxCanvas class="ty-canvas" aria-hidden="true"></canvas>
+
+    <div class="surface-card ty-card" [class.is-replaying]="pulseKey() > 0" (click)="$event.stopPropagation()">
+      @if (previewMode()) {
+        <div class="ty-preview-bar">
+          <span class="ty-preview-tag">
+            <app-icon name="play" [size]="13" />
+            <span>پیش‌نمایش زنده: {{ pack().name }}</span>
+          </span>
+          <button
+            type="button"
+            class="icon-close-btn"
+            aria-label="بستن پیش‌نمایش"
+            (click)="closed.emit()"
+          >
+            <app-icon name="close" [size]="18" />
+          </button>
+        </div>
+      } @else {
+        <button
+          type="button"
+          class="icon-close-btn ty-top-close"
+          aria-label="بستن پنجره تشکر"
+          (click)="closed.emit()"
+        >
+          <app-icon name="close" [size]="18" />
+        </button>
+      }
+
+      <div class="ty-emblem-stage" [attr.data-theme]="animationId()">
+        @if (animationId() === 'golden-trophy') {
+          <div class="ty-gold-rays" aria-hidden="true"></div>
+        }
+        <div class="ty-emblem-ring" [style.--ring-color]="pack().accentColor">
+          <app-icon [name]="emblemIcon()" [size]="34" />
+        </div>
+      </div>
+
+      <div class="ty-creator-pill">
+        <img
+          [src]="creatorAvatarUrl()"
+          [alt]="creatorName()"
+          referrerpolicy="no-referrer"
+          class="ty-creator-avatar"
+        />
+        <span class="ty-creator-name">{{ creatorName() }}</span>
+        @if (creatorVerified()) {
+          <span class="ty-verified-icon" title="تایید شده">
+            <app-icon name="verified" [size]="15" />
+          </span>
+        }
+      </div>
+
+      <h2 id="ty-dialog-title" class="ty-heading">
+        سپاسگزاری ویژه از شما، {{ supporterName() }}!
+      </h2>
+
+      <p class="ty-note">{{ resolvedThankYouNote() }}</p>
+
+      <dl class="ty-receipt">
+        <div class="ty-receipt-row">
+          <dt>مبلغ حمایت</dt>
+          <dd class="tabular-nums ty-amount">{{ formatToman(amount()) }}</dd>
+        </div>
+        @if (postTitle()) {
+          <div class="ty-receipt-row">
+            <dt>بابت</dt>
+            <dd>{{ postTitle() }}</dd>
+          </div>
+        }
+        <div class="ty-receipt-row">
+          <dt>جلوه تشکر</dt>
+          <dd>{{ pack().name }}</dd>
+        </div>
+      </dl>
+
+      <div class="ty-actions">
+        <button type="button" class="btn btn-secondary" (click)="replay()">
+          <app-icon name="sparkles" [size]="17" />
+          <span>پخش دوباره انیمیشن</span>
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [class.btn-warm]="animationId() === 'coral-hearts' || animationId() === 'golden-trophy'"
+          [class.btn-primary]="animationId() !== 'coral-hearts' && animationId() !== 'golden-trophy'"
+          (click)="closed.emit()"
+        >
+          <span>{{ previewMode() ? 'بستن پیش‌نمایش' : 'بازگشت به صفحه آفریننده' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,86 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a routerLink="/" class="brand-link" (click)="closeMenu()">
+      <span class="brand-mark" aria-hidden="true">
+        <app-icon name="brand" [size]="20" />
+      </span>
+      <span class="brand-name">دونو</span>
+    </a>
+
+    <nav class="desktop-nav" aria-label="ناوبری اصلی">
+      <a
+        routerLink="/"
+        routerLinkActive="is-active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-link"
+      >
+        صفحه اصلی
+      </a>
+      <a routerLink="/explore" routerLinkActive="is-active" class="nav-link">
+        کاوش آفرینندگان
+      </a>
+      <a routerLink="/about" routerLinkActive="is-active" class="nav-link">
+        درباره ما
+      </a>
+      <a routerLink="/faq" routerLinkActive="is-active" class="nav-link">
+        سوالات متداول
+      </a>
+    </nav>
+
+    <div class="header-actions">
+      <button
+        type="button"
+        class="theme-btn"
+        (click)="themeService.toggle()"
+        [attr.aria-label]="
+          themeService.theme() === 'dark' ? 'تغییر به حالت روشن' : 'تغییر به حالت تاریک'
+        "
+      >
+        @if (themeService.theme() === 'dark') {
+          <app-icon name="sun" [size]="18" />
+        } @else {
+          <app-icon name="moon" [size]="18" />
+        }
+      </button>
+
+      @if (authService.currentUser(); as user) {
+        <a
+          [routerLink]="user.onboarded ? '/dashboard' : '/onboarding'"
+          class="btn btn-primary btn-sm header-cta"
+        >
+          {{ user.onboarded ? 'داشبورد من' : 'تکمیل پروفایل' }}
+        </a>
+      } @else {
+        <a routerLink="/login" class="btn btn-primary btn-sm header-cta">
+          شروع رایگان
+        </a>
+      }
+
+      <button
+        type="button"
+        class="mobile-menu-btn"
+        (click)="mobileOpen.set(!mobileOpen())"
+        [attr.aria-expanded]="mobileOpen()"
+        aria-label="باز کردن منو"
+      >
+        @if (mobileOpen()) {
+          <app-icon name="close" [size]="20" />
+        } @else {
+          <app-icon name="menu" [size]="20" />
+        }
+      </button>
+    </div>
+  </div>
+
+  @if (mobileOpen()) {
+    <nav class="mobile-drawer" aria-label="منوی موبایل">
+      <div class="container mobile-drawer-inner">
+        <a routerLink="/" class="mobile-link" (click)="closeMenu()">صفحه اصلی</a>
+        <a routerLink="/explore" class="mobile-link" (click)="closeMenu()">کاوش آفرینندگان</a>
+        <a routerLink="/about" class="mobile-link" (click)="closeMenu()">درباره ما</a>
+        <a routerLink="/faq" class="mobile-link" (click)="closeMenu()">سوالات متداول</a>
+        <a routerLink="/contact" class="mobile-link" (click)="closeMenu()">تماس با ما</a>
+      </div>
+    </nav>
+  }
+</header>

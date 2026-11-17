@@ -1,0 +1,162 @@
+@if (open()) {
+  <div
+    class="share-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="share-modal-title"
+    (click)="onBackdropClick($event)"
+  >
+    <div class="surface-card share-modal-card">
+      <div class="share-head">
+        <div>
+          <h2 id="share-modal-title" class="share-title">اشتراکگذاری صفحه {{ displayName() }}</h2>
+          <p class="share-sub">لینک یا کد QR را ذخیره کنید یا با متن آماده در شبکه‌های اجتماعی منتشر نمایید.</p>
+        </div>
+        <button
+          type="button"
+          class="icon-close-btn"
+          aria-label="بستن پنجره اشتراکگذاری"
+          (click)="closed.emit()"
+        >
+          <app-icon name="close" [size]="18" />
+        </button>
+      </div>
+
+      <!-- Method 1: Copyable Link -->
+      <div class="share-block">
+        <label for="share-url-input" class="field-label">لینک صفحه حمایت</label>
+        <div class="copy-row">
+          <input
+            id="share-url-input"
+            type="text"
+            readonly
+            dir="ltr"
+            [value]="displayUrl()"
+            class="field-input share-url-input"
+            (click)="selectInput($event)"
+          />
+          <button type="button" class="btn btn-primary btn-sm copy-btn" (click)="copyLink()">
+            @if (copied()) {
+              <app-icon name="check" [size]="16" />
+              <span>کپی شد</span>
+            } @else {
+              <app-icon name="copy" [size]="16" />
+              <span>کپی لینک</span>
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- Method 2: Social Apps with App-Customized Snippets -->
+      <div class="social-share-block">
+        <div class="social-head">
+          <span class="field-label">اشتراک‌گذاری در شبکه‌های اجتماعی</span>
+          <span class="social-hint">{{ selectedOption().channelHint }}</span>
+        </div>
+
+        <div class="platform-tabs" role="tablist" aria-label="انتخاب شبکه اجتماعی برای اشتراک‌گذاری">
+          @for (opt of platformOptions(); track opt.id) {
+            <button
+              type="button"
+              role="tab"
+              [attr.aria-selected]="selectedPlatform() === opt.id"
+              class="platform-tab"
+              [class.is-active]="selectedPlatform() === opt.id"
+              (click)="selectPlatform(opt.id)"
+            >
+              <app-icon [name]="opt.id" [size]="15" />
+              <span>{{ opt.nameFa }}</span>
+            </button>
+          }
+        </div>
+
+        <div class="snippet-box">
+          <label for="share-snippet-input" class="sr-only">
+            متن آماده اشتراک‌گذاری در {{ selectedOption().nameFa }}
+          </label>
+          <textarea
+            id="share-snippet-input"
+            rows="4"
+            class="field-textarea snippet-textarea"
+            [value]="activeSnippet()"
+            (input)="updateSnippet($any($event.target).value)"
+          ></textarea>
+
+          <div class="snippet-actions">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              (click)="copySnippet()"
+            >
+              @if (snippetCopied()) {
+                <app-icon name="check" [size]="15" />
+                <span>کپی شد</span>
+              } @else {
+                <app-icon name="copy" [size]="15" />
+                <span>کپی متن {{ selectedOption().nameFa }}</span>
+              }
+            </button>
+
+            @if (activeIntentUrl(); as intentHref) {
+              <a
+                [href]="intentHref"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-warm btn-sm"
+              >
+                <app-icon [name]="selectedOption().id" [size]="15" />
+                <span>{{ selectedOption().actionLabel }}</span>
+              </a>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-warm btn-sm"
+                [disabled]="!qrDataUrl()"
+                (click)="downloadQr()"
+              >
+                <app-icon name="download" [size]="15" />
+                <span>دانلود QR برای استوری</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Method 3: QR Code + PNG Download -->
+      <div class="qr-block">
+        <div class="qr-preview-box">
+          @if (qrDataUrl(); as qrSrc) {
+            <img
+              [src]="qrSrc"
+              [alt]="'کد QR صفحه ' + displayName()"
+              class="qr-img"
+            />
+          } @else {
+            <div class="skeleton qr-skeleton"></div>
+          }
+        </div>
+        <div class="qr-info">
+          <strong>کد QR اختصاصی</strong>
+          <p>مخاطبان می‌توانند با اسکن این کد مستقیم وارد صفحه حمایت شما شوند.</p>
+          <div class="qr-actions">
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              [disabled]="!qrDataUrl()"
+              (click)="downloadQr()"
+            >
+              <app-icon name="download" [size]="16" />
+              <span>دانلود QR</span>
+            </button>
+            @if (canNativeShare()) {
+              <button type="button" class="btn btn-ghost btn-sm" (click)="nativeShare()">
+                <app-icon name="share" [size]="16" />
+                <span>اشتراک‌گذاری دستگاه</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

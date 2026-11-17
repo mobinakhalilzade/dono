@@ -3,12 +3,8 @@ import {DirectusService} from '../../directus';
 
 @Component({
   selector: 'app-article-detail',
-  template: `
-    @if (article.value(); as a) {
-      <h1>{{ a.title }}</h1>
-      <div [innerHTML]="a.content"></div>
-    }
-  `,
+  templateUrl: './article-detail.html',
+  styleUrl: './article-detail.scss',
 })
 export class ArticleDetailComponent {
   private readonly directus = inject(DirectusService);

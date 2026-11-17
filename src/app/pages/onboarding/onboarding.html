@@ -1,0 +1,144 @@
+<section class="onboarding-section">
+  <div class="container onboarding-container">
+    <div class="surface-card onboarding-card">
+      <header class="onboarding-head">
+        <h1 class="onboarding-title balance-text">تکمیل صفحه دونو شما</h1>
+        <p class="onboarding-subtitle">
+          مشخصات پایه صفحه خود را وارد کنید تا بلافاصله لینک اختصاصی شما ساخته شود.
+        </p>
+      </header>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="onboarding-form">
+        <div class="field-group">
+          <span class="field-label">انتخاب تصویر پروفایل</span>
+          <div class="avatar-picker">
+            @for (item of avatarOptions(); track item.url) {
+              <button
+                type="button"
+                class="avatar-choice"
+                [class.is-selected]="selectedAvatar() === item.url"
+                (click)="selectAvatar(item.url)"
+                [attr.aria-label]="item.label"
+              >
+                <img [src]="item.url" [alt]="item.label" referrerpolicy="no-referrer" />
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="onboard-username" class="field-label">نام کاربری (لینک صفحه)</label>
+          <div class="username-wrap">
+            <span class="username-prefix" dir="ltr">dono.com/&#64;</span>
+            <input
+              id="onboard-username"
+              type="text"
+              dir="ltr"
+              formControlName="username"
+              class="field-input username-input"
+              [class.is-invalid]="submitted() && !!errors()['username']"
+              placeholder="sara_studio"
+            />
+          </div>
+          @if (submitted() && errors()['username']; as err) {
+            <span class="field-error">
+              <app-icon name="alert" [size]="14" />
+              <span>{{ err }}</span>
+            </span>
+          } @else {
+            <span class="field-hint">فقط حروف انگلیسی کوچک، عدد و خط زیر (_) مجاز است.</span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label for="onboard-name" class="field-label">نام نمایشی</label>
+          <input
+            id="onboard-name"
+            type="text"
+            formControlName="displayName"
+            class="field-input"
+            [class.is-invalid]="submitted() && !!errors()['displayName']"
+            placeholder="مثلاً سارا محمدی"
+          />
+          @if (submitted() && errors()['displayName']; as err) {
+            <span class="field-error">
+              <app-icon name="alert" [size]="14" />
+              <span>{{ err }}</span>
+            </span>
+          }
+        </div>
+
+        <div class="two-cols">
+          <div class="field-group">
+            <div class="category-label-row">
+              <label for="onboard-category" class="field-label">حوزه فعالیت</label>
+              @if (categoriesLoading()) {
+                <span class="field-hint">در حال بارگذاری...</span>
+              }
+            </div>
+            <select
+              id="onboard-category"
+              formControlName="category"
+              class="field-select"
+              [attr.aria-busy]="categoriesLoading()"
+            >
+              @for (cat of categories(); track cat.key) {
+                <option [value]="cat.key">{{ cat.label }}</option>
+              }
+            </select>
+            @if (categoriesError(); as catErr) {
+              <div class="category-retry-row">
+                <span class="field-hint">{{ catErr }}</span>
+                <button type="button" class="link-btn" (click)="reloadCategories()">
+                  تلاش مجدد
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="field-group">
+            <label for="onboard-price" class="field-label">حداقل مبلغ حمایت (تومان)</label>
+            <input
+              id="onboard-price"
+              type="number"
+              min="10000"
+              max="50000000"
+              step="5000"
+              formControlName="minSupportAmount"
+              class="field-input tabular-nums"
+              [class.is-invalid]="submitted() && !!errors()['minSupportAmount']"
+            />
+            @if (submitted() && errors()['minSupportAmount']; as err) {
+              <span class="field-error">
+                <app-icon name="alert" [size]="14" />
+                <span>{{ err }}</span>
+              </span>
+            }
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="onboard-bio" class="field-label">معرفی کوتاه و داستان شما</label>
+          <textarea
+            id="onboard-bio"
+            formControlName="bio"
+            class="field-textarea"
+            [class.is-invalid]="submitted() && !!errors()['bio']"
+            placeholder="برای مخاطبان بنویسید روی چه پروژه‌ای کار می‌کنید و حمایتشان چه کمکی می‌کند..."
+          ></textarea>
+          @if (submitted() && errors()['bio']; as err) {
+            <span class="field-error">
+              <app-icon name="alert" [size]="14" />
+              <span>{{ err }}</span>
+            </span>
+          }
+        </div>
+
+        <button type="submit" class="btn btn-primary submit-btn" [disabled]="saving()">
+          <app-icon name="check" [size]="18" />
+          <span>{{ saving() ? 'در حال ساخت صفحه...' : 'ساخت صفحه و ورود به داشبورد' }}</span>
+        </button>
+      </form>
+    </div>
+  </div>
+</section>

@@ -1,4 +1,4 @@
-export type CreatorCategory =
+export type KnownCreatorCategory =
   | 'podcast'
   | 'illustration'
   | 'tech'
@@ -6,7 +6,9 @@ export type CreatorCategory =
   | 'music'
   | 'video';
 
-export const CATEGORY_LABELS: Record<CreatorCategory, string> = {
+export type CreatorCategory = KnownCreatorCategory | (string & {});
+
+export const CATEGORY_LABELS: Record<string, string> = {
   podcast: 'پادکست',
   illustration: 'طراحی و تصویرسازی',
   tech: 'برنامه‌نویسی و فناوری',

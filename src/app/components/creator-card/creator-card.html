@@ -1,0 +1,53 @@
+<a [routerLink]="['/c', creator().username]" class="creator-card surface-card">
+  <div class="cover-wrap">
+    @if (!coverFailed()) {
+      <img
+        [src]="creator().coverUrl"
+        [alt]="creator().displayName"
+        referrerpolicy="no-referrer"
+        class="cover-img"
+        (error)="coverFailed.set(true)"
+      />
+    } @else {
+      <div class="cover-fallback" aria-hidden="true"></div>
+    }
+  </div>
+
+  <div class="card-body">
+    <div class="avatar-row">
+      <div class="avatar-wrap">
+        @if (!avatarFailed()) {
+          <img
+            [src]="creator().avatarUrl"
+            [alt]="creator().displayName"
+            referrerpolicy="no-referrer"
+            class="avatar-img"
+            (error)="avatarFailed.set(true)"
+          />
+        } @else {
+          <span class="avatar-fallback">{{ initials() }}</span>
+        }
+      </div>
+      <span class="support-rate tabular-nums">
+        حمایت از {{ formatToman(creator().minSupportAmount) }}
+      </span>
+    </div>
+
+    <div class="title-row">
+      <h3 class="creator-name">{{ creator().displayName }}</h3>
+      @if (creator().verified) {
+        <span class="verified-icon" title="تایید شده">
+          <app-icon name="verified" [size]="16" />
+        </span>
+      }
+    </div>
+
+    <div class="meta-row">
+      <span>{{ categoryLabel() }}</span>
+      <span aria-hidden="true">·</span>
+      <span class="tabular-nums">{{ formatNumberFa(creator().supportersCount) }} حامی</span>
+    </div>
+
+    <p class="creator-tagline">{{ creator().tagline }}</p>
+  </div>
+</a>

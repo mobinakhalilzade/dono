@@ -1,0 +1,97 @@
+<section class="static-page">
+  <div class="container static-narrow">
+    <header class="static-head">
+      <h1 class="static-title balance-text">تماس با دونو</h1>
+      <p class="static-lead">
+        پیشنهاد، سوال یا نیاز به راهنمایی دارید؟ پیام خود را ارسال کنید.
+      </p>
+    </header>
+
+    <div class="surface-card contact-card">
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate class="contact-form">
+        <div class="two-cols">
+          <div class="field-group">
+            <label for="contact-name" class="field-label">نام و نام خانوادگی</label>
+            <input
+              id="contact-name"
+              type="text"
+              formControlName="name"
+              class="field-input"
+              [class.is-invalid]="submitted() && !!errors()['name']"
+              placeholder="مثلاً مهسا رضایی"
+            />
+            @if (submitted() && errors()['name']; as err) {
+              <span class="field-error">
+                <app-icon name="alert" [size]="14" />
+                <span>{{ err }}</span>
+              </span>
+            }
+          </div>
+
+          <div class="field-group">
+            <label for="contact-email" class="field-label">ایمیل</label>
+            <input
+              id="contact-email"
+              type="email"
+              dir="ltr"
+              formControlName="email"
+              class="field-input"
+              [class.is-invalid]="submitted() && !!errors()['email']"
+              placeholder="name@example.com"
+            />
+            @if (submitted() && errors()['email']; as err) {
+              <span class="field-error">
+                <app-icon name="alert" [size]="14" />
+                <span>{{ err }}</span>
+              </span>
+            }
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="contact-subject" class="field-label">موضوع</label>
+          <input
+            id="contact-subject"
+            type="text"
+            formControlName="subject"
+            class="field-input"
+            [class.is-invalid]="submitted() && !!errors()['subject']"
+            placeholder="مثلاً سوال درباره تسویه حساب"
+          />
+          @if (submitted() && errors()['subject']; as err) {
+            <span class="field-error">
+              <app-icon name="alert" [size]="14" />
+              <span>{{ err }}</span>
+            </span>
+          }
+        </div>
+
+        <div class="field-group">
+          <label for="contact-msg" class="field-label">متن پیام</label>
+          <textarea
+            id="contact-msg"
+            formControlName="message"
+            class="field-textarea"
+            [class.is-invalid]="submitted() && !!errors()['message']"
+            placeholder="پیام خود را با جزئیات بنویسید..."
+          ></textarea>
+          @if (submitted() && errors()['message']; as err) {
+            <span class="field-error">
+              <app-icon name="alert" [size]="14" />
+              <span>{{ err }}</span>
+            </span>
+          }
+        </div>
+
+        @if (sent()) {
+          <div class="status-banner is-success" role="status">
+            <app-icon name="check" [size]="18" />
+            <span>پیام شما با موفقیت ثبت شد. همکاران ما در اسرع وقت پاسخ می‌دهند.</span>
+          </div>
+        }
+
+        <button type="submit" class="btn btn-primary">ارسال پیام</button>
+      </form>
+    </div>
+  </div>
+</section>

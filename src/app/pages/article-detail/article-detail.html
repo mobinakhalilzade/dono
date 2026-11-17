@@ -1,1 +1,4 @@
-<p>article-detail works!</p>
+@if (article.value(); as a) {
+  <h1>{{ a.title }}</h1>
+  <div [innerHTML]="a.content"></div>
+}
