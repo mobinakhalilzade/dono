@@ -110,12 +110,13 @@ export function validateSupportForm(input: SupportValidationInput): Record<strin
 }
 
 export function validateSheba(sheba: string): string | null {
-  const normalized = sheba.replace(/\s+/g, '').toUpperCase();
-  if (!normalized) {
+  const raw = String(sheba ?? '').replace(/\s+/g, '').toUpperCase();
+  if (!raw) {
     return 'شماره شبا الزامی است.';
   }
+  const normalized = /^\d{24}$/.test(raw) ? `IR${raw}` : raw;
   if (!/^IR\d{24}$/.test(normalized)) {
-    return 'شماره شبا باید با IR شروع شود و شامل ۲۴ رقم باشد (مجموعاً ۲۶ کاراکتر).';
+    return 'شماره شبا باید با پیشوند IR و ۲۴ رقم عدد (مجموعاً ۲۶ کاراکتر) تشکیل شده باشد.';
   }
   return null;
 }

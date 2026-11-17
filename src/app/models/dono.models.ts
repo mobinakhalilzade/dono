@@ -34,6 +34,7 @@ export interface Creator {
   supportersCount: number;
   totalRaised: number;
   verified: boolean;
+  activated?: boolean;
   socialLinks: SocialLink[];
   createdAt: string;
   ownerEmail?: string;
@@ -85,10 +86,16 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  firstName?: string;
+  lastName?: string;
   username: string | null;
   avatarUrl: string;
   onboarded: boolean;
-  provider?: 'google' | 'demo';
+  activated?: boolean;
+  birthDateJalali?: string;
+  nationalCode?: string;
+  sheba?: string;
+  provider?: 'google' | 'credentials' | 'demo';
 }
 
 export interface SupportRequestPayload {

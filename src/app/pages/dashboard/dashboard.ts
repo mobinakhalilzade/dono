@@ -1,10 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AppIcon, IconName } from '../../components/icon/icon';
 import { ShareModalComponent } from '../../components/share-modal/share-modal';
 import { ThankYouCelebrationComponent } from '../../components/thank-you-celebration/thank-you-celebration';
-import { COVER_CREATIVE_URL, COVER_PODCAST_URL, HERO_IMAGE_URL } from '../../data/mock-data';
+import {
+  AVATAR_ALI_URL,
+  AVATAR_NEGAR_URL,
+  AVATAR_SARA_URL,
+  COVER_CREATIVE_URL,
+  COVER_PODCAST_URL,
+  HERO_IMAGE_URL,
+} from '../../data/mock-data';
 import {
   CATEGORY_LABELS,
   CreatorCategory,
@@ -17,6 +24,15 @@ import { AuthService } from '../../services/auth.service';
 import { CreatorService } from '../../services/creator.service';
 import { SupportService } from '../../services/support.service';
 import { ThemeService } from '../../services/theme.service';
+import {
+  JALALI_MONTHS,
+  SOCIAL_PLATFORM_META,
+  formatJalaliBirthdateLabel,
+  maskNationalCode,
+  maskSheba,
+  normalizeAndValidateSocialLinks,
+  validateActivationInput,
+} from '../../utils/auth-validators';
 import {
   MAX_SUPPORT_TOMAN,
   MIN_SUPPORT_TOMAN,
@@ -40,6 +56,7 @@ import {
 
 type DashboardTab =
   | 'overview'
+  | 'activation'
   | 'posts'
   | 'animations'
   | 'supporters'
@@ -68,7 +85,7 @@ type DashboardTab =
               برای مشاهده درآمد، مدیریت حامیان و ویرایش صفحه، ابتدا وارد حساب خود شوید یا از پیش‌نمایش حساب نمونه استفاده کنید.
             </p>
             <div class="gate-actions">
-              <a routerLink="/login" class="btn btn-primary">ورود با گوگل</a>
+              <a routerLink="/login" class="btn btn-primary">ورود یا ثبت‌نام</a>
               <button type="button" class="btn btn-secondary" (click)="enterDemoCreator()">
                 ورود سریع با حساب نمونه سارا محمدی
               </button>
@@ -92,6 +109,18 @@ type DashboardTab =
               </div>
 
               <nav class="dash-nav" aria-label="منوی داشبورد">
+                <button
+                  type="button"
+                  class="dash-nav-btn"
+                  [class.is-active]="activeTab() === 'activation'"
+                  (click)="activeTab.set('activation')"
+                >
+                  <app-icon name="shield" [size]="18" />
+                  <span>فعال‌سازی حساب</span>
+                  <span class="nav-status-pill" [class.is-done]="isUserActivated()">
+                    {{ isUserActivated() ? 'فعال' : 'در انتظار' }}
+                  </span>
+                </button>
                 <button
                   type="button"
                   class="dash-nav-btn"
@@ -175,7 +204,228 @@ type DashboardTab =
 
             <!-- Main Workspace -->
             <div class="dash-main">
+              @if (!isUserActivated() && activeTab() !== 'activation') {
+                <div class="surface-card activation-banner" role="region" aria-label="وضعیت فعال‌سازی حساب">
+                  <div class="activation-banner-copy">
+                    <span class="activation-banner-icon" aria-hidden="true">
+                      <app-icon name="shield" [size]="18" />
+                    </span>
+                    <div>
+                      <strong>حساب شما هنوز فعال‌سازی نشده است</strong>
+                      <p>
+                        برای فعال‌سازی کامل حساب و انتشار در صفحه کاوش، تاریخ تولد شمسی، کد ملی و شماره شبا را ثبت کنید.
+                      </p>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-warm btn-sm" (click)="activeTab.set('activation')">
+                    <app-icon name="shield" [size]="15" />
+                    <span>تکمیل فعال‌سازی حساب</span>
+                  </button>
+                </div>
+              }
+
               @switch (activeTab()) {
+                @case ('activation') {
+                  <header class="dash-head-row">
+                    <div>
+                      <h1 class="dash-title">فعال‌سازی حساب و تکمیل پروفایل</h1>
+                      <p class="dash-subtitle">
+                        ابتدا اطلاعات هویتی و بانکی خود را برای فعال‌سازی حساب ثبت کنید و سپس پروفایل عمومی‌تان را کامل کنید.
+                      </p>
+                    </div>
+                  </header>
+
+                  <div class="steps-strip">
+                    <div
+                      class="step-chip-card"
+                      [class.is-current]="!isUserActivated()"
+                      [class.is-done]="isUserActivated()"
+                    >
+                      <span class="step-num-badge">
+                        @if (isUserActivated()) {
+                          <app-icon name="check" [size]="16" />
+                        } @else {
+                          ۱
+                        }
+                      </span>
+                      <div class="step-chip-text">
+                        <strong>گام اول: فعال‌سازی حساب</strong>
+                        <span>تاریخ تولد شمسی، کد ملی ۱۰ رقمی و شماره شبا</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      class="step-chip-card"
+                      [class.is-done]="hasCompletedPublicProfile()"
+                      (click)="activeTab.set('editor')"
+                      style="text-align: start; cursor: pointer;"
+                    >
+                      <span class="step-num-badge">
+                        @if (hasCompletedPublicProfile()) {
+                          <app-icon name="check" [size]="16" />
+                        } @else {
+                          ۲
+                        }
+                      </span>
+                      <div class="step-chip-text">
+                        <strong>گام دوم: تکمیل پروفایل عمومی</strong>
+                        <span>تصویر کاور، آواتار، بیوگرافی و شبکه‌های اجتماعی</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  @if (isUserActivated()) {
+                    <div class="surface-card form-card">
+                      <div class="status-banner is-success" role="status">
+                        <app-icon name="shield" [size]="18" />
+                        <span>حساب کاربری شما با موفقیت فعال شده است و صفحه شما آماده دریافت حمایت است.</span>
+                      </div>
+
+                      <div class="verified-summary-grid">
+                        <div class="verified-summary-item">
+                          <span>تاریخ تولد (شمسی)</span>
+                          <strong>{{ formatJalaliBirthdateLabel(authService.currentUser()?.birthDateJalali) }}</strong>
+                        </div>
+                        <div class="verified-summary-item">
+                          <span>کد ملی ثبت‌شده</span>
+                          <strong dir="ltr" class="tabular-nums">{{ maskNationalCode(authService.currentUser()?.nationalCode) }}</strong>
+                        </div>
+                        <div class="verified-summary-item">
+                          <span>شماره شبا بانکی</span>
+                          <strong dir="ltr" class="tabular-nums">{{ maskSheba(authService.currentUser()?.sheba) }}</strong>
+                        </div>
+                      </div>
+
+                      <div class="form-actions" style="margin-block-start: 1.25rem;">
+                        <button type="button" class="btn btn-primary" (click)="activeTab.set('editor')">
+                          <app-icon name="edit" [size]="16" />
+                          <span>تکمیل کاور، آواتار، بیو و شبکه‌های اجتماعی</span>
+                        </button>
+                        <a [routerLink]="['/c', activeCreator()!.username]" class="btn btn-secondary">
+                          <app-icon name="external" [size]="16" />
+                          <span>مشاهده صفحه عمومی</span>
+                        </a>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="surface-card form-card">
+                      <h2 class="card-title">ثبت اطلاعات هویتی و بانکی (گام ۱)</h2>
+                      <p class="card-desc">
+                        این اطلاعات فقط برای احراز هویت و واریز مبالغ به حساب بانکی شما استفاده می‌شود و در صفحه عمومی نمایش داده نمی‌شود.
+                      </p>
+
+                      <form [formGroup]="activationForm" (ngSubmit)="submitActivation()" novalidate class="dash-form">
+                        <div class="field-group">
+                          <span class="field-label">تاریخ تولد (به تقویم شمسی)</span>
+                          <div class="jalali-date-grid">
+                            <div>
+                              <label for="act-day" class="sr-only">روز تولد شمسی</label>
+                              <input
+                                id="act-day"
+                                type="number"
+                                min="1"
+                                max="31"
+                                dir="ltr"
+                                formControlName="birthDay"
+                                class="field-input tabular-nums"
+                                [class.is-invalid]="activationSubmitted() && !!activationErrors()['birthDate']"
+                                placeholder="روز (۱ تا ۳۱)"
+                              />
+                            </div>
+                            <div>
+                              <label for="act-month" class="sr-only">ماه تولد شمسی</label>
+                              <select
+                                id="act-month"
+                                formControlName="birthMonth"
+                                class="field-select"
+                                [class.is-invalid]="activationSubmitted() && !!activationErrors()['birthDate']"
+                              >
+                                <option value="">انتخاب ماه...</option>
+                                @for (m of jalaliMonths; track m.value) {
+                                  <option [value]="m.value">{{ m.label }}</option>
+                                }
+                              </select>
+                            </div>
+                            <div>
+                              <label for="act-year" class="sr-only">سال تولد شمسی</label>
+                              <input
+                                id="act-year"
+                                type="number"
+                                min="1300"
+                                max="1396"
+                                dir="ltr"
+                                formControlName="birthYear"
+                                class="field-input tabular-nums"
+                                [class.is-invalid]="activationSubmitted() && !!activationErrors()['birthDate']"
+                                placeholder="سال (مثلاً 1375)"
+                              />
+                            </div>
+                          </div>
+                          @if (activationSubmitted() && activationErrors()['birthDate']; as err) {
+                            <span class="field-error">
+                              <app-icon name="alert" [size]="14" />
+                              <span>{{ err }}</span>
+                            </span>
+                          } @else {
+                            <span class="field-hint">مثال: ۱۵ / تیر / ۱۳۷۵</span>
+                          }
+                        </div>
+
+                        <div class="two-cols">
+                          <div class="field-group">
+                            <label for="act-nc" class="field-label">کد ملی (۱۰ رقمی)</label>
+                            <input
+                              id="act-nc"
+                              type="text"
+                              inputmode="numeric"
+                              maxlength="10"
+                              dir="ltr"
+                              formControlName="nationalCode"
+                              class="field-input tabular-nums"
+                              [class.is-invalid]="activationSubmitted() && !!activationErrors()['nationalCode']"
+                              placeholder="0013520849"
+                            />
+                            @if (activationSubmitted() && activationErrors()['nationalCode']; as err) {
+                              <span class="field-error">
+                                <app-icon name="alert" [size]="14" />
+                                <span>{{ err }}</span>
+                              </span>
+                            }
+                          </div>
+
+                          <div class="field-group">
+                            <label for="act-sheba" class="field-label">شماره شبا بانکی (IR...)</label>
+                            <input
+                              id="act-sheba"
+                              type="text"
+                              maxlength="26"
+                              dir="ltr"
+                              formControlName="sheba"
+                              class="field-input tabular-nums"
+                              [class.is-invalid]="activationSubmitted() && !!activationErrors()['sheba']"
+                              placeholder="IR820540102680020817909002"
+                            />
+                            @if (activationSubmitted() && activationErrors()['sheba']; as err) {
+                              <span class="field-error">
+                                <app-icon name="alert" [size]="14" />
+                                <span>{{ err }}</span>
+                              </span>
+                            }
+                          </div>
+                        </div>
+
+                        <div class="form-actions">
+                          <button type="submit" class="btn btn-primary">
+                            <app-icon name="shield" [size]="17" />
+                            <span>تایید و فعال‌سازی حساب</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  }
+                }
+
                 @case ('overview') {
                   <header class="dash-head-row">
                     <div>
@@ -567,6 +817,23 @@ type DashboardTab =
                     <p class="dash-subtitle">موجودی قابل برداشت: {{ formatToman(availableBalance()) }}</p>
                   </header>
 
+                  @if (!isUserActivated()) {
+                    <div class="surface-card activation-banner" role="alert">
+                      <div class="activation-banner-copy">
+                        <span class="activation-banner-icon" aria-hidden="true">
+                          <app-icon name="shield" [size]="18" />
+                        </span>
+                        <div>
+                          <strong>برای ثبت درخواست تسویه، ابتدا حساب خود را فعال کنید</strong>
+                          <p>ثبت تاریخ تولد شمسی، کد ملی و شماره شبا در بخش فعال‌سازی الزامی است.</p>
+                        </div>
+                      </div>
+                      <button type="button" class="btn btn-warm btn-sm" (click)="activeTab.set('activation')">
+                        <span>رفتن به فعال‌سازی حساب</span>
+                      </button>
+                    </div>
+                  }
+
                   <div class="surface-card form-card">
                     <h2 class="card-title">ثبت درخواست تسویه جدید</h2>
                     <form [formGroup]="payoutForm" (ngSubmit)="submitPayout()" novalidate class="dash-form">
@@ -671,8 +938,8 @@ type DashboardTab =
                 @case ('editor') {
                   <header class="dash-head-row">
                     <div>
-                      <h1 class="dash-title">ویرایشگر صفحه آفریننده</h1>
-                      <p class="dash-subtitle">تغییرات بلافاصله روی صفحه عمومی شما نمایش داده می‌شوند</p>
+                      <h1 class="dash-title">تکمیل پروفایل و ویرایشگر صفحه</h1>
+                      <p class="dash-subtitle">تصویر کاور، آواتار، بیوگرافی و لینک شبکه‌های اجتماعی خود را تنظیم کنید</p>
                     </div>
                     <button type="button" class="btn btn-secondary btn-sm" (click)="activeTab.set('posts')">
                       <app-icon name="target" [size]="16" />
@@ -681,7 +948,29 @@ type DashboardTab =
                   </header>
 
                   <div class="surface-card form-card">
-                    <h2 class="card-title">اطلاعات صفحه آفریننده</h2>
+                    <div class="editor-preview-card" aria-label="پیش‌نمایش زنده تصویر کاور و آواتار">
+                      <div class="editor-cover-preview">
+                        <img
+                          [src]="editorCoverPreview()"
+                          alt="پیش‌نمایش تصویر کاور"
+                          referrerpolicy="no-referrer"
+                        />
+                      </div>
+                      <div class="editor-avatar-bar">
+                        <img
+                          [src]="editorAvatarPreview()"
+                          alt="پیش‌نمایش تصویر پروفایل"
+                          referrerpolicy="no-referrer"
+                          class="editor-avatar-preview"
+                        />
+                        <div class="sidebar-meta">
+                          <strong>{{ editorForm.controls.displayName.value || activeCreator()!.displayName }}</strong>
+                          <span dir="ltr">&#64;{{ activeCreator()!.username }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h2 class="card-title" style="margin-block-start: 1.25rem;">اطلاعات و ظاهر صفحه آفریننده</h2>
                     <form [formGroup]="editorForm" (ngSubmit)="saveProfile()" novalidate class="dash-form">
                       <div class="two-cols">
                         <div class="field-group">
@@ -716,47 +1005,133 @@ type DashboardTab =
                         </div>
                       </div>
 
-                      <div class="two-cols">
-                        <div class="field-group">
-                          <label for="ed-category" class="field-label">دسته‌بندی</label>
-                          <select id="ed-category" formControlName="category" class="field-select">
-                            @for (cat of categories; track cat.key) {
-                              <option [value]="cat.key">{{ cat.label }}</option>
-                            }
-                          </select>
-                        </div>
+                      <div class="field-group">
+                        <label for="ed-category" class="field-label">دسته‌بندی فعالیت</label>
+                        <select id="ed-category" formControlName="category" class="field-select">
+                          @for (cat of categories; track cat.key) {
+                            <option [value]="cat.key">{{ cat.label }}</option>
+                          }
+                        </select>
+                      </div>
 
-                        <div class="field-group">
-                          <label for="ed-cover" class="field-label">تصویر کاور</label>
-                          <select id="ed-cover" formControlName="coverUrl" class="field-select">
-                            @for (cov of coverOptions; track cov.url) {
-                              <option [value]="cov.url">{{ cov.label }}</option>
-                            }
-                          </select>
+                      <!-- Avatar Upload -->
+                      <div class="media-picker-block">
+                        <span class="field-label">تصویر پروفایل (آواتار)</span>
+                        <div class="media-url-upload-row">
+                          <label for="ed-avatar-url" class="sr-only">آدرس تصویر آواتار</label>
+                          <input
+                            id="ed-avatar-url"
+                            type="url"
+                            dir="ltr"
+                            formControlName="avatarUrl"
+                            class="field-input"
+                            placeholder="https://... لینک مستقیم تصویر آواتار"
+                          />
+                          <label class="upload-file-label">
+                            <app-icon name="upload" [size]="15" />
+                            <span>آپلود آواتار</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              class="upload-file-input"
+                              (change)="onMediaFileSelected($event, 'avatarUrl')"
+                            />
+                          </label>
                         </div>
                       </div>
+
+                      <!-- Cover Image Upload -->
+                      <div class="media-picker-block">
+                        <span class="field-label">تصویر کاور (سربرگ صفحه)</span>
+                        <div class="media-url-upload-row">
+                          <label for="ed-cover-url" class="sr-only">آدرس تصویر کاور</label>
+                          <input
+                            id="ed-cover-url"
+                            type="url"
+                            dir="ltr"
+                            formControlName="coverUrl"
+                            class="field-input"
+                            placeholder="https://... لینک مستقیم تصویر کاور"
+                          />
+                          <label class="upload-file-label">
+                            <app-icon name="image" [size]="15" />
+                            <span>آپلود کاور</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              class="upload-file-input"
+                              (change)="onMediaFileSelected($event, 'coverUrl')"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      @if (mediaUploadError(); as mErr) {
+                        <span class="field-error">
+                          <app-icon name="alert" [size]="14" />
+                          <span>{{ mErr }}</span>
+                        </span>
+                      }
 
                       <div class="field-group">
                         <label for="ed-tagline" class="field-label">معرفی یک‌خطی</label>
-                        <input id="ed-tagline" type="text" formControlName="tagline" class="field-input" />
+                        <input
+                          id="ed-tagline"
+                          type="text"
+                          formControlName="tagline"
+                          class="field-input"
+                          placeholder="مثلاً تصویرگر کتاب و سازنده پادکست هفتگی"
+                        />
                       </div>
 
                       <div class="field-group">
-                        <label for="ed-bio" class="field-label">درباره من</label>
-                        <textarea id="ed-bio" formControlName="bio" class="field-textarea"></textarea>
+                        <label for="ed-bio" class="field-label">درباره من (بیوگرافی کامل)</label>
+                        <textarea
+                          id="ed-bio"
+                          formControlName="bio"
+                          class="field-textarea"
+                          placeholder="درباره فعالیت‌ها، پروژه‌ها و دلیل حمایت مخاطبان بنویسید..."
+                        ></textarea>
+                      </div>
+
+                      <div class="field-group">
+                        <span class="field-label">شبکه‌های اجتماعی و وب‌سایت</span>
+                        <div class="social-editor-grid" [formGroup]="socialForm">
+                          @for (soc of socialPlatforms; track soc.platform) {
+                            <div class="field-group">
+                              <label [for]="'soc-' + soc.platform" class="field-hint">{{ soc.label }}</label>
+                              <input
+                                [id]="'soc-' + soc.platform"
+                                type="url"
+                                dir="ltr"
+                                [formControlName]="soc.platform"
+                                class="field-input"
+                                [class.is-invalid]="editorSubmitted() && !!editorErrors()[soc.platform]"
+                                [placeholder]="soc.placeholder"
+                              />
+                              @if (editorSubmitted() && editorErrors()[soc.platform]; as sErr) {
+                                <span class="field-error">{{ sErr }}</span>
+                              }
+                            </div>
+                          }
+                        </div>
                       </div>
 
                       @if (editorSaved()) {
                         <div class="status-banner is-success" role="status">
                           <app-icon name="check" [size]="18" />
-                          <span>تغییرات صفحه با موفقیت ذخیره شد.</span>
+                          <span>تغییرات پروفایل و شبکه‌های اجتماعی با موفقیت ذخیره شد.</span>
                         </div>
                       }
 
                       <div class="form-actions">
-                        <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                        <button type="submit" class="btn btn-primary">
+                          <app-icon name="check" [size]="17" />
+                          <span>ذخیره پروفایل و تغییرات</span>
+                        </button>
                         <a [routerLink]="['/c', activeCreator()!.username]" class="btn btn-secondary">
-                          پیش‌نمایش صفحه عمومی
+                          <app-icon name="external" [size]="16" />
+                          <span>پیش‌نمایش صفحه عمومی</span>
                         </a>
                       </div>
                     </form>
@@ -1663,10 +2038,49 @@ export class DashboardComponent {
   ).map((key) => ({ key, label: CATEGORY_LABELS[key] }));
 
   protected readonly coverOptions = [
-    { url: COVER_CREATIVE_URL, label: 'میز کار هنری و طراحی' },
-    { url: COVER_PODCAST_URL, label: 'استودیو پادکست و فناوری' },
-    { url: HERO_IMAGE_URL, label: 'فضای استودیو روشن' },
+    { url: COVER_CREATIVE_URL, label: 'میز کار هنری' },
+    { url: COVER_PODCAST_URL, label: 'استودیو پادکست' },
+    { url: HERO_IMAGE_URL, label: 'فضای استودیو' },
   ];
+
+  protected readonly avatarOptions = [
+    { url: AVATAR_SARA_URL, label: 'پرتره هنری' },
+    { url: AVATAR_ALI_URL, label: 'پرتره استودیو' },
+    { url: AVATAR_NEGAR_URL, label: 'پرتره عکاسی' },
+    { url: HERO_IMAGE_URL, label: 'آواتار کارگاه' },
+  ];
+
+  protected readonly jalaliMonths = JALALI_MONTHS;
+  protected readonly socialPlatforms = SOCIAL_PLATFORM_META;
+  protected readonly formatJalaliBirthdateLabel = formatJalaliBirthdateLabel;
+  protected readonly maskNationalCode = maskNationalCode;
+  protected readonly maskSheba = maskSheba;
+
+  protected readonly isUserActivated = computed(() => {
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    if (typeof user.activated === 'boolean') {
+      return user.activated;
+    }
+    return this.activeCreator()?.activated !== false;
+  });
+
+  protected readonly hasCompletedPublicProfile = computed(() => {
+    const c = this.activeCreator();
+    if (!c) return false;
+    return c.bio.trim().length >= 15 && c.socialLinks.length > 0;
+  });
+
+  // Activation form
+  protected readonly activationForm = new FormGroup({
+    birthDay: new FormControl<string>('', { nonNullable: true }),
+    birthMonth: new FormControl<string>('', { nonNullable: true }),
+    birthYear: new FormControl<string>('', { nonNullable: true }),
+    nationalCode: new FormControl<string>('', { nonNullable: true }),
+    sheba: new FormControl<string>('', { nonNullable: true }),
+  });
+  protected readonly activationSubmitted = signal(false);
+  protected readonly activationErrors = signal<Record<string, string>>({});
 
   // Payout form
   protected readonly payoutForm = new FormGroup({
@@ -1682,10 +2096,22 @@ export class DashboardComponent {
     displayName: new FormControl<string>('', { nonNullable: true }),
     minSupportAmount: new FormControl<number>(50000, { nonNullable: true }),
     category: new FormControl<CreatorCategory>('illustration', { nonNullable: true }),
+    avatarUrl: new FormControl<string>(AVATAR_SARA_URL, { nonNullable: true }),
     coverUrl: new FormControl<string>(COVER_CREATIVE_URL, { nonNullable: true }),
     tagline: new FormControl<string>('', { nonNullable: true }),
     bio: new FormControl<string>('', { nonNullable: true }),
   });
+  protected readonly socialForm = new FormGroup({
+    instagram: new FormControl<string>('', { nonNullable: true }),
+    telegram: new FormControl<string>('', { nonNullable: true }),
+    youtube: new FormControl<string>('', { nonNullable: true }),
+    x: new FormControl<string>('', { nonNullable: true }),
+    github: new FormControl<string>('', { nonNullable: true }),
+    website: new FormControl<string>('', { nonNullable: true }),
+  });
+  protected readonly editorAvatarPreview = signal<string>(AVATAR_SARA_URL);
+  protected readonly editorCoverPreview = signal<string>(COVER_CREATIVE_URL);
+  protected readonly mediaUploadError = signal<string | null>(null);
   protected readonly editorSubmitted = signal(false);
   protected readonly editorErrors = signal<Record<string, string>>({});
   protected readonly editorSaved = signal(false);
@@ -1744,27 +2170,66 @@ export class DashboardComponent {
     getAnimationPackById(this.creatorAnimConfig().activeId),
   );
 
+  private initialTabResolved = false;
+
   constructor() {
     this.supporterSearch.valueChanges.subscribe((v) => this.supporterQuery.set(v));
     this.postForm.controls.kind.valueChanges.subscribe((k) => this.postKind.set(k));
     this.postForm.controls.targetAmount.valueChanges.subscribe((v) =>
       this.postTargetAmount.set(Number(v) || 0),
     );
+    this.editorForm.controls.avatarUrl.valueChanges.subscribe((v) => {
+      if (v.trim()) this.editorAvatarPreview.set(v.trim());
+    });
+    this.editorForm.controls.coverUrl.valueChanges.subscribe((v) => {
+      if (v.trim()) this.editorCoverPreview.set(v.trim());
+    });
 
     effect(() => {
       const c = this.activeCreator();
-      if (c) {
+      const user = this.authService.currentUser();
+      if (c && user) {
+        if (!this.initialTabResolved) {
+          this.initialTabResolved = true;
+          if (!this.isUserActivated()) {
+            untracked(() => this.activeTab.set('activation'));
+          }
+        }
         this.editorForm.patchValue(
           {
             displayName: c.displayName,
             minSupportAmount: c.minSupportAmount,
             category: c.category,
+            avatarUrl: c.avatarUrl,
             coverUrl: c.coverUrl,
             tagline: c.tagline,
             bio: c.bio,
           },
           { emitEvent: false },
         );
+        this.editorAvatarPreview.set(c.avatarUrl);
+        this.editorCoverPreview.set(c.coverUrl);
+
+        const linkMap: Record<string, string> = {};
+        for (const sl of c.socialLinks) {
+          linkMap[sl.platform] = sl.url;
+        }
+        this.socialForm.patchValue(
+          {
+            instagram: linkMap['instagram'] ?? '',
+            telegram: linkMap['telegram'] ?? '',
+            youtube: linkMap['youtube'] ?? '',
+            x: linkMap['x'] ?? '',
+            github: linkMap['github'] ?? '',
+            website: linkMap['website'] ?? '',
+          },
+          { emitEvent: false },
+        );
+
+        if (user.sheba && !this.payoutForm.controls.sheba.value) {
+          this.payoutForm.patchValue({ sheba: user.sheba }, { emitEvent: false });
+        }
+
         const animCfg = this.animationStore.getCreatorConfig(c.username);
         this.thankYouNoteForm.patchValue({ note: animCfg.thankYouNote }, { emitEvent: false });
       }
@@ -1788,9 +2253,73 @@ export class DashboardComponent {
     return formatNumberFa(Math.round(amount / 1000)) + 'ه';
   }
 
+  protected submitActivation(): void {
+    this.activationSubmitted.set(true);
+    const val = this.activationForm.getRawValue();
+    const res = validateActivationInput({
+      birthYear: val.birthYear,
+      birthMonth: val.birthMonth,
+      birthDay: val.birthDay,
+      nationalCode: val.nationalCode,
+      sheba: val.sheba,
+    });
+    this.activationErrors.set(res.errors);
+    if (Object.keys(res.errors).length > 0 || !res.birthDateJalali) {
+      return;
+    }
+    this.authService.activateCurrentUser({
+      birthDateJalali: res.birthDateJalali,
+      nationalCode: res.normalizedNationalCode,
+      sheba: res.normalizedSheba,
+    });
+    this.payoutForm.patchValue({ sheba: res.normalizedSheba });
+    this.activationSubmitted.set(false);
+  }
+
+  protected selectPresetMedia(field: 'avatarUrl' | 'coverUrl', url: string): void {
+    this.mediaUploadError.set(null);
+    this.editorForm.controls[field].setValue(url);
+    if (field === 'avatarUrl') {
+      this.editorAvatarPreview.set(url);
+    } else {
+      this.editorCoverPreview.set(url);
+    }
+  }
+
+  protected onMediaFileSelected(event: Event, field: 'avatarUrl' | 'coverUrl'): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+    this.mediaUploadError.set(null);
+
+    if (!file.type.startsWith('image/')) {
+      this.mediaUploadError.set('لطفاً فقط فایل تصویری معتبر انتخاب کنید.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.mediaUploadError.set('حجم تصویر نباید بیشتر از ۲ مگابایت باشد.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        this.selectPresetMedia(field, reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   protected async submitPayout(): Promise<void> {
     const c = this.activeCreator();
     if (!c) return;
+    if (!this.isUserActivated()) {
+      this.payoutSubmitted.set(true);
+      this.payoutErrors.set({
+        sheba: 'ابتدا در بخش «فعال‌سازی حساب»، هویت و شماره شبا خود را تایید کنید.',
+      });
+      return;
+    }
     this.payoutSubmitted.set(true);
     this.payoutSuccess.set(false);
     const val = this.payoutForm.getRawValue();
@@ -1813,7 +2342,7 @@ export class DashboardComponent {
     await this.supportService.requestPayout(c.username, Number(val.amount), val.sheba);
     this.payoutSubmitted.set(false);
     this.payoutSuccess.set(true);
-    this.payoutForm.patchValue({ sheba: '' });
+    this.payoutForm.patchValue({ sheba: this.authService.currentUser()?.sheba ?? '' });
   }
 
   protected saveProfile(): void {
@@ -1822,6 +2351,7 @@ export class DashboardComponent {
     this.editorSubmitted.set(true);
     this.editorSaved.set(false);
     const val = this.editorForm.getRawValue();
+    const socRaw = this.socialForm.getRawValue();
     const errs: Record<string, string> = {};
 
     if (val.displayName.trim().length < 3) {
@@ -1833,16 +2363,35 @@ export class DashboardComponent {
       errs['minSupportAmount'] = `حداکثر مبلغ مجاز ${formatToman(MAX_SUPPORT_TOMAN)} است.`;
     }
 
+    const socialRes = normalizeAndValidateSocialLinks(
+      this.socialPlatforms.map((p) => ({
+        platform: p.platform,
+        label: p.label,
+        url: socRaw[p.platform],
+      })),
+    );
+    Object.assign(errs, socialRes.errors);
+
     this.editorErrors.set(errs);
     if (Object.keys(errs).length > 0) return;
 
+    const nextAvatar = val.avatarUrl.trim() || c.avatarUrl;
+    const nextCover = val.coverUrl.trim() || c.coverUrl;
+    const nextName = val.displayName.trim();
+
     this.creatorService.updateCreatorProfile(c.username, {
-      displayName: val.displayName.trim(),
+      displayName: nextName,
       minSupportAmount: Number(val.minSupportAmount),
       category: val.category,
-      coverUrl: val.coverUrl,
+      avatarUrl: nextAvatar,
+      coverUrl: nextCover,
       tagline: val.tagline.trim(),
       bio: val.bio.trim(),
+      socialLinks: socialRes.links,
+    });
+    this.authService.syncCurrentUserProfile({
+      displayName: nextName,
+      avatarUrl: nextAvatar,
     });
     this.editorSaved.set(true);
   }

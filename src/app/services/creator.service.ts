@@ -96,6 +96,9 @@ export class CreatorService {
   ): Creator[] {
     const q = query.trim().toLowerCase();
     let list = this.creatorsState().filter((c) => {
+      if (c.activated === false) {
+        return false;
+      }
       const matchesCategory = category === 'all' || c.category === category;
       if (!matchesCategory) {
         return false;
@@ -195,7 +198,15 @@ export class CreatorService {
     patch: Partial<
       Pick<
         Creator,
-        'displayName' | 'tagline' | 'bio' | 'category' | 'minSupportAmount' | 'coverUrl' | 'avatarUrl'
+        | 'displayName'
+        | 'tagline'
+        | 'bio'
+        | 'category'
+        | 'minSupportAmount'
+        | 'coverUrl'
+        | 'avatarUrl'
+        | 'socialLinks'
+        | 'activated'
       >
     >,
   ): void {
