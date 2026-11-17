@@ -338,10 +338,21 @@
                       </div>
                     </div>
 
+                    @if (activationApiError(); as apiErr) {
+                      <div class="status-banner is-error" role="alert">
+                        <app-icon name="alert" [size]="18" />
+                        <span>{{ apiErr }}</span>
+                      </div>
+                    }
+
                     <div class="form-actions">
-                      <button type="submit" class="btn btn-primary">
+                      <button
+                        type="submit"
+                        class="btn btn-primary"
+                        [disabled]="activationLoading()"
+                      >
                         <app-icon name="shield" [size]="17" />
-                        <span>تایید و فعال‌سازی حساب</span>
+                        <span>{{ activationLoading() ? 'در حال ثبت اطلاعات...' : 'تایید و فعال‌سازی حساب' }}</span>
                       </button>
                     </div>
                   </form>

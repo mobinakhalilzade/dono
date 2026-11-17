@@ -452,6 +452,11 @@
   color: var(--success-text);
 }
 
+.status-banner.is-error {
+  background-color: var(--danger-bg);
+  color: var(--danger-text);
+}
+
 .settings-list {
   display: flex;
   flex-direction: column;

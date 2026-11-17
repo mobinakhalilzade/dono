@@ -1,13 +1,14 @@
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { environment } from '../../environments/environment';
 import { AVATAR_SARA_URL, COVER_CREATIVE_URL } from '../data/mock-data';
 import { AuthUser, CreatorCategory } from '../models/dono.models';
 import { GoogleSessionUserPayload, isAllowedPopupOrigin } from '../utils/auth-utils';
 import { normalizeDigits } from '../utils/auth-validators';
+import { buildUserInfoPayload, extractUserInfoApiError } from '../utils/user-info';
 import { CreatorService } from './creator.service';
 
-// TODO: move this to your environment file
-const DIRECTUS_URL = 'http://localhost:8055';
+const DIRECTUS_URL = environment.directusUrl;
 const DIRECTUS_ME_PATH = '/users/me?fields=id,email,first_name,last_name';
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/;
@@ -449,24 +450,46 @@ export class AuthService {
   // Profile / activation
   // ---------------------------------------------------------------------------
 
-  activateCurrentUser(input: UserActivationInput): AuthUser | null {
+  async activateCurrentUser(input: UserActivationInput): Promise<AuthUser | null> {
     const current = this.currentUser();
     if (!current) return null;
+
+    const payload = buildUserInfoPayload({
+      nationalCode: input.nationalCode,
+      sheba: input.sheba,
+      birthDateJalali: input.birthDateJalali,
+    });
+
+    let res: Response;
+    try {
+      res = await fetch(`${DIRECTUS_URL}/user_info`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+    } catch {
+      throw new Error('ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.');
+    }
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => null);
+      throw new Error(extractUserInfoApiError(res.status, json));
+    }
 
     const updated: AuthUser = {
       ...current,
       activated: true,
-      birthDateJalali: input.birthDateJalali,
-      nationalCode: input.nationalCode,
-      sheba: input.sheba,
+      birthDateJalali: payload.birthdate,
+      nationalCode: payload.nationalId,
+      sheba: payload.sheba,
     };
 
-    // TODO: store these in Directus (custom fields on directus_users) instead of localStorage
     this.saveActivationRecord(current.id, {
       activated: true,
-      birthDateJalali: input.birthDateJalali,
-      nationalCode: input.nationalCode,
-      sheba: input.sheba,
+      birthDateJalali: payload.birthdate,
+      nationalCode: payload.nationalId,
+      sheba: payload.sheba,
     });
 
     if (current.username) {

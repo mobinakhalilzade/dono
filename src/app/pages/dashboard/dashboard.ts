@@ -198,6 +198,8 @@ export class DashboardComponent {
     sheba: new FormControl<string>('', { nonNullable: true }),
   });
   protected readonly activationSubmitted = signal(false);
+  protected readonly activationLoading = signal(false);
+  protected readonly activationApiError = signal<string | null>(null);
   protected readonly activationErrors = signal<Record<string, string>>({});
 
   // Payout form
@@ -292,6 +294,20 @@ export class DashboardComponent {
 
   constructor() {
     void this.activityCategoriesService.loadCategories();
+    this.activationForm.valueChanges.subscribe(() => {
+      this.activationApiError.set(null);
+      if (this.activationSubmitted()) {
+        const val = this.activationForm.getRawValue();
+        const res = validateActivationInput({
+          birthYear: val.birthYear,
+          birthMonth: val.birthMonth,
+          birthDay: val.birthDay,
+          nationalCode: val.nationalCode,
+          sheba: val.sheba,
+        });
+        this.activationErrors.set(res.errors);
+      }
+    });
     this.supporterSearch.valueChanges.subscribe((v) => this.supporterQuery.set(v));
     this.postForm.controls.kind.valueChanges.subscribe((k) => this.postKind.set(k));
     this.postForm.controls.targetAmount.valueChanges.subscribe((v) =>
@@ -385,8 +401,9 @@ export class DashboardComponent {
     return formatNumberFa(Math.round(amount / 1000)) + 'ه';
   }
 
-  protected submitActivation(): void {
+  protected async submitActivation(): Promise<void> {
     this.activationSubmitted.set(true);
+    this.activationApiError.set(null);
     const val = this.activationForm.getRawValue();
     const res = validateActivationInput({
       birthYear: val.birthYear,
@@ -399,13 +416,25 @@ export class DashboardComponent {
     if (Object.keys(res.errors).length > 0 || !res.birthDateJalali) {
       return;
     }
-    this.authService.activateCurrentUser({
-      birthDateJalali: res.birthDateJalali,
-      nationalCode: res.normalizedNationalCode,
-      sheba: res.normalizedSheba,
-    });
-    this.payoutForm.patchValue({ sheba: res.normalizedSheba });
-    this.activationSubmitted.set(false);
+
+    this.activationLoading.set(true);
+    try {
+      await this.authService.activateCurrentUser({
+        birthDateJalali: res.birthDateJalali,
+        nationalCode: res.normalizedNationalCode,
+        sheba: res.normalizedSheba,
+      });
+      this.payoutForm.patchValue({ sheba: res.normalizedSheba });
+      this.activationSubmitted.set(false);
+    } catch (err) {
+      this.activationApiError.set(
+        err instanceof Error
+          ? err.message
+          : 'ثبت اطلاعات هویتی با خطا مواجه شد. لطفاً دوباره تلاش کنید.',
+      );
+    } finally {
+      this.activationLoading.set(false);
+    }
   }
 
   protected selectPresetMedia(field: 'avatarUrl' | 'coverUrl', url: string): void {
