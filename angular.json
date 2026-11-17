@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "moneybede": {
+    "dono": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -27,13 +27,18 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "assets"
               }
             ],
             "styles": ["src/styles.scss"],
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": ["*"]
             },
             "ssr": {
               "entry": "src/server.ts"
@@ -71,12 +76,17 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "host": "0.0.0.0",
+            "port": 3000,
+            "allowedHosts": true
+          },
           "configurations": {
             "production": {
-              "buildTarget": "moneybede:build:production"
+              "buildTarget": "dono:build:production"
             },
             "development": {
-              "buildTarget": "moneybede:build:development"
+              "buildTarget": "dono:build:development"
             }
           },
           "defaultConfiguration": "development"
